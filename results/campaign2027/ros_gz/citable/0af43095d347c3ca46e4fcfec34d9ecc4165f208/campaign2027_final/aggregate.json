@@ -1,0 +1,213 @@
+{
+  "campaign": {
+    "schema": 1,
+    "created_utc": "2026-08-18T13:00:01Z",
+    "source_commit": "0af43095d347c3ca46e4fcfec34d9ecc4165f208",
+    "build_commit": "0af43095d347c3ca46e4fcfec34d9ecc4165f208",
+    "build_dirty": 0,
+    "campaign_class": "citable",
+    "config_file": "gfs_seeking_gz.yaml",
+    "config_sha256": "06751dcd0c43746d4e7f891f5eba01e070eb824b3f8b6caf379962df107886fb",
+    "ros_distro": "jazzy",
+    "gazebo_version": "8.11.0",
+    "ros_gz_sim_version": "1.0.22"
+  },
+  "families": [
+    {
+      "family": "nominal",
+      "n": 30,
+      "success": 30,
+      "wilson_lb_95": 0.8865,
+      "reach_s": {
+        "median": 10.88,
+        "iqr": [
+          10.8,
+          10.96
+        ],
+        "min": 10.66,
+        "max": 13.28
+      },
+      "station_rmse_m": {
+        "median": 0.0767,
+        "iqr": [
+          0.0505,
+          0.0935
+        ],
+        "min": 0.0327,
+        "max": 0.1391
+      },
+      "odom_position_rmse_m": {
+        "median": 0.0834,
+        "iqr": [
+          0.0666,
+          0.0973
+        ],
+        "min": 0.0448,
+        "max": 0.1299
+      },
+      "odom_yaw_rmse_rad": {
+        "median": 0.01536,
+        "iqr": [
+          0.0105,
+          0.02656
+        ],
+        "min": 0.00197,
+        "max": 0.04598
+      },
+      "wall_runtime_s": {
+        "median": 99.41,
+        "iqr": [
+          99.35,
+          99.5
+        ],
+        "min": 99.21,
+        "max": 100.12
+      }
+    },
+    {
+      "family": "stress",
+      "n": 30,
+      "success": 30,
+      "wilson_lb_95": 0.8865,
+      "reach_s": {
+        "median": 11.43,
+        "iqr": [
+          11.18,
+          11.66
+        ],
+        "min": 10.96,
+        "max": 13.14
+      },
+      "station_rmse_m": {
+        "median": 0.1635,
+        "iqr": [
+          0.1492,
+          0.1981
+        ],
+        "min": 0.0344,
+        "max": 0.2376
+      },
+      "odom_position_rmse_m": {
+        "median": 0.1046,
+        "iqr": [
+          0.0644,
+          0.1521
+        ],
+        "min": 0.0387,
+        "max": 0.2571
+      },
+      "odom_yaw_rmse_rad": {
+        "median": 0.0997,
+        "iqr": [
+          0.0579,
+          0.15815
+        ],
+        "min": 0.02227,
+        "max": 0.26369
+      },
+      "wall_runtime_s": {
+        "median": 99.49,
+        "iqr": [
+          99.43,
+          99.54
+        ],
+        "min": 99.3,
+        "max": 100.12
+      }
+    },
+    {
+      "family": "disturbance_transit",
+      "n": 30,
+      "success": 30,
+      "wilson_lb_95": 0.8865,
+      "reach_s": {
+        "median": 17.06,
+        "iqr": [
+          16.98,
+          17.26
+        ],
+        "min": 16.58,
+        "max": 19.24
+      },
+      "station_rmse_m": {
+        "median": 0.0432,
+        "iqr": [
+          0.0306,
+          0.0697
+        ],
+        "min": 0.0047,
+        "max": 0.1093
+      },
+      "odom_position_rmse_m": {
+        "median": 0.064,
+        "iqr": [
+          0.0431,
+          0.0853
+        ],
+        "min": 0.0152,
+        "max": 0.1349
+      },
+      "odom_yaw_rmse_rad": {
+        "median": 0.04207,
+        "iqr": [
+          0.03415,
+          0.0497
+        ],
+        "min": 0.00694,
+        "max": 0.06575
+      },
+      "wall_runtime_s": {
+        "median": 130.45,
+        "iqr": [
+          130.33,
+          130.5
+        ],
+        "min": 129.02,
+        "max": 130.69
+      },
+      "event_applied": "30/30",
+      "adoption_delay_s": {
+        "median": 7.28,
+        "iqr": [
+          7.28,
+          7.28
+        ],
+        "min": 7.24,
+        "max": 7.28
+      },
+      "post_event_max_excursion_m": {
+        "median": 3.679,
+        "iqr": [
+          3.678,
+          3.7
+        ],
+        "min": 3.677,
+        "max": 3.887
+      },
+      "task_recovery_s": {
+        "distribution": {
+          "median": 10.28,
+          "iqr": [
+            10.08,
+            10.28
+          ],
+          "min": 9.88,
+          "max": 10.68
+        },
+        "recovered": "30/30"
+      },
+      "yaw_recovery_s": {
+        "distribution": {
+          "median": 7.28,
+          "iqr": [
+            7.28,
+            7.28
+          ],
+          "min": 7.24,
+          "max": 7.28
+        },
+        "recovered": "30/30"
+      }
+    }
+  ]
+}

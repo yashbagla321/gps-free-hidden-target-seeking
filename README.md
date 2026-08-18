@@ -111,9 +111,16 @@ are cited — never a single seed's raw value.
 | Stress (combined comms degradation) | 30/30 | 0.164 (IQR 0.149-0.198, max 0.238) | 30% dropout, 0.2s delay, 0.1s jitter, 5% outliers simultaneously |
 | Disturbance (60 deg relay yaw step, mid-transit) | 30/30 | -- | Adoption at median 7.3s post-step; task recovery at median 10.3s; every trial succeeds |
 
-Gazebo's curated manifests/summaries land in
-`results/campaign2027/ros_gz/citable/0af43095d347c3ca46e4fcfec34d9ecc4165f208/` in
-a follow-up commit.
+Gazebo's curated manifests/summaries/checksums are in
+`results/campaign2027/ros_gz/citable/0af43095d347c3ca46e4fcfec34d9ecc4165f208/`
+(`aggregate.json`, `campaign_manifest.json`, per-run `*.summary`/`*.meta.json`
+files, and `checksums.sha256`; raw per-run CSVs and Gazebo logs are excluded,
+consistent with the offline archive above). One file in that directory,
+`gfs_seeking_gz.yaml`, is the exact ROS 2 config used to produce the
+campaign and is referenced by its SHA-256 in `aggregate.json`'s
+`config_sha256` field; it is therefore kept byte-identical to the run that
+produced these numbers, including its internal `icra2027`-named comment and
+path, rather than renamed to match this repo's `campaign2027` convention.
 
 ## Reproducing
 

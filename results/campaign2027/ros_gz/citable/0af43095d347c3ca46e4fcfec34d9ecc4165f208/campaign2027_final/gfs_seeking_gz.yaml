@@ -1,0 +1,71 @@
+# Mirrors config/icra2027/default.ini; the seeker's supervisor and
+# registration parameters must match the offline campaign for the
+# C++/Gazebo consistency check.
+gfs_seeker_node:
+  ros__parameters:
+    use_sim_time: true
+    cert_on_deg: 10.0
+    cert_off_deg: 15.0
+    min_correlation: 0.5
+    min_window_packets: 8
+    consecutive_windows: 3
+    min_dwell_s: 1.0
+    v_excite: 0.6
+    omega_excite: 0.45
+    k_p: 0.8
+    k_omega: 2.0
+    v_max: 1.0
+    omega_max: 1.2
+    maintain_enter: 0.20
+    maintain_exit: 0.30
+    k_e: 2.0
+    theta_drift_rate: 0.002
+    change_chi_thresh: 9.0
+    change_adopt_after: 10
+    change_min_duration_s: 4.0
+    change_min_interval_s: 2.0
+    window_packets: 64
+    window_age_s: 4.0
+    min_packets: 2
+    min_spread: 0.0001
+    # Rate-invariant random-walk intensities. At 50 Hz these produce per-step
+    # sigma values 0.007071 m and 0.001414 rad, matching the 100 Hz campaign.
+    odom_sigma_xy_per_sqrt_s: 0.05
+    odom_sigma_dtheta_per_sqrt_s: 0.01
+relay_emulator_node:
+  ros__parameters:
+    use_sim_time: true
+    relay_x: -6.0
+    relay_y: -1.5
+    relay_yaw: 2.2
+    target_x: 1.5
+    target_y: 9.0
+    rate_hz: 20.0
+    sigma_r: 0.10
+    sigma_beta: 0.0175
+    dropout: 0.0
+    delay_s: 0.0
+    delay_jitter_s: 0.0
+    outlier_prob: 0.0
+    yaw_step_time: -1.0
+    yaw_step_deg: 0.0
+    target_step_time: -1.0
+    target_step_dx: 0.0
+    target_step_dy: 0.0
+gz_evaluator_node:
+  ros__parameters:
+    use_sim_time: true
+    target_x: 1.5
+    target_y: 9.0
+    target_step_time: -1.0
+    target_step_dx: 0.0
+    target_step_dy: 0.0
+    mission_s: 90.0
+    station_window_s: 30.0
+    success_reach: 0.25
+    success_hold: 0.35
+    success_hold_s: 10.0
+    seed: 12
+    scenario: manual
+    fail_if_output_exists: true
+    output_dir: results/icra2027/ros_gz

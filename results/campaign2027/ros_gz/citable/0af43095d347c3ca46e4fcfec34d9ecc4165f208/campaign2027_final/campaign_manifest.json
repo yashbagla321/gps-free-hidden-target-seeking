@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "created_utc": "2026-08-18T13:00:01Z",
+  "source_commit": "0af43095d347c3ca46e4fcfec34d9ecc4165f208",
+  "build_commit": "0af43095d347c3ca46e4fcfec34d9ecc4165f208",
+  "build_dirty": 0,
+  "campaign_class": "citable",
+  "config_file": "gfs_seeking_gz.yaml",
+  "config_sha256": "06751dcd0c43746d4e7f891f5eba01e070eb824b3f8b6caf379962df107886fb",
+  "ros_distro": "jazzy",
+  "gazebo_version": "8.11.0",
+  "ros_gz_sim_version": "1.0.22"
+}

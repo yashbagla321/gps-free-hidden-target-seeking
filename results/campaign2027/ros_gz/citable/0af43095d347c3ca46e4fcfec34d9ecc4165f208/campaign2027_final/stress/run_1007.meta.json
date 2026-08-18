@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "seed": 1007,
+  "started_utc": "2026-08-18T14:00:30Z",
+  "wall_runtime_s": 99.301978472,
+  "launch_exit_code": 0,
+  "validation": "passed",
+  "csv_sha256": "32b3097ecce78a917bc8d8c607c9e44cf0ce6b05171fc30e0fbcebd3e4021fc7",
+  "summary_sha256": "1cf2c0fc368ccce419e293df1bc52ee0fc94a0bf5731754f1400aca67c9e0254",
+  "launch_overrides": [
+    "dropout:=0.3",
+    "delay_s:=0.2",
+    "delay_jitter_s:=0.1",
+    "outlier_prob:=0.05"
+  ]
+}
