@@ -1,0 +1,5 @@
+axis,value,method,n,success_rate,wilson_lo,wilson_hi,median_rmse,q90_rmse,median_theta_err,median_path_err
+sigma_xy,0.005,proposed_smoother,60,1,0.939826,1,0.0618552,0.0910457,0.0233497,0.935764
+sigma_xy,0.01,proposed_smoother,60,0.983333,0.911447,0.997052,0.0584614,0.103135,0.0575779,1.38176
+sigma_xy,0.02,proposed_smoother,60,0,0,0.0601739,11.4901,14.6285,1.27153,2.0621
+sigma_xy,0.05,proposed_smoother,60,0,0,0.0601739,11.4901,14.6285,1.27153,5.16413

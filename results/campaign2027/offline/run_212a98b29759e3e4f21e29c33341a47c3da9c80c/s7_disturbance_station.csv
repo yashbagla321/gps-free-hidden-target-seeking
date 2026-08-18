@@ -1,0 +1,7 @@
+scenario,variant,delta_deg,n,post_success_rate,post_wilson_lo,post_wilson_hi,adoption_rate,adoption_wilson_lo,adoption_wilson_hi,recovery_required_n,recovery_rate_required,recovery_wilson_lo,recovery_wilson_hi,within_tolerance_rate,median_detect_delay,median_recovery_time,median_post_time_to_goal,median_theta_err,median_station_rmse,median_adoptions
+station,supervised,20,150,1,0.975029,1,0.12,0.0772684,0.18171,145,0.110345,0.0690707,0.171733,0.0333333,20.85,21.25,5.41,0.338702,0.0785149,0
+station,fixed_decay,20,150,1,0.975029,1,0.113333,0.0719736,0.174004,145,0.103448,0.0636978,0.163669,0.0333333,20.85,21,5.39,0.338777,0.079077,0
+station,supervised,40,150,1,0.975029,1,0.7,0.622419,0.767593,150,0.666667,0.587896,0.737114,0,20.9,20.9,8.22,0.133225,0.0841404,1
+station,fixed_decay,40,150,1,0.975029,1,0.7,0.622419,0.767593,150,0.666667,0.587896,0.737114,0,20.9,20.95,8.24,0.133701,0.0823867,1
+station,supervised,80,150,1,0.975029,1,1,0.975029,1,150,0.98,0.942852,0.993175,0,21.05,21.05,10.92,0.0627879,0.0604543,1
+station,fixed_decay,80,150,1,0.975029,1,1,0.975029,1,150,0.98,0.942852,0.993175,0,21,21,10.91,0.0652539,0.0691712,1

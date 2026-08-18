@@ -1,0 +1,19 @@
+{
+  "study": "s2_conditioning",
+  "run_id": "212a98b29759e3e4f21e29c33341a47c3da9c80c",
+  "timestamp_utc": 1786922866,
+  "git_head": "212a98b29759e3e4f21e29c33341a47c3da9c80c",
+  "compiled_git_head": "212a98b29759e3e4f21e29c33341a47c3da9c80c",
+  "git_dirty": "false",
+  "configure_dirty": "false",
+  "build_stamp": "Aug 17 2026 00:27:21",
+  "compiler": "gcc 15.2.0",
+  "build_mode": "Release",
+  "n_seeds": 1000,
+  "seed_base": 99,
+  "horizon_s": 0,
+  "supervisor": {"cert_on_rad": 0.174533, "cert_off_rad": 0.261799, "min_correlation": 0.5, "min_window_packets": 8, "consecutive_windows": 3, "min_dwell": 1, "v_excite": 0.6, "omega_excite": 0.45, "k_p": 0.8, "k_omega": 2, "v_max": 1, "omega_max": 1.2, "maintain_enter": 0.2, "maintain_exit": 0.3, "k_e": 2, "theta_drift_rate": 0.002, "change_chi_thresh": 9, "change_adopt_after": 10, "change_min_duration_s": 4, "change_min_interval_s": 2, "exc_lambda_per_s": 0.05},
+  "registration": {"max_packets": 64, "max_age": 4, "min_packets": 2, "min_spread": 0.0001, "endpoint_only": false},
+  "measurement_noise": {"sigma_r_m": 0.10, "sigma_beta_rad": 0.0175},
+  "grid": {"chord_m": [0.25, 0.5, 1.0, 2.0, 4.0], "n_views": [2, 4, 8, 16]}
+}

@@ -1,0 +1,6 @@
+#pragma once
+
+namespace gfs_gz_build {
+inline constexpr char kGitCommit[] = "@GFS_BUILD_COMMIT@";
+inline constexpr bool kDirty = @GFS_BUILD_DIRTY_BOOL@;
+}  // namespace gfs_gz_build
