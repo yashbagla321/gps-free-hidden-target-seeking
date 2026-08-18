@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software or the accompanying evidence archive, please cite
+  it as below. A citation to the associated paper will be added here once it
+  is posted/accepted.
+title: "GPS-Free Hidden-Target Seeking: Companion Code and Evidence Archive"
+type: software
+authors:
+  - given-names: Yash
+    family-names: Bagla
+license: MIT
+date-released: "2026-08-18"
