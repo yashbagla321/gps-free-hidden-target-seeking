@@ -19,8 +19,13 @@ import sys
 import matplotlib
 
 matplotlib.use("Agg")
+# Type 1/42 (TrueType), not the matplotlib default Type 3: PaperCept/IEEE
+# submission checks reject Type 3 fonts embedded in figure PDFs.
+matplotlib.rcParams["pdf.fonttype"] = 42
+matplotlib.rcParams["ps.fonttype"] = 42
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import NullLocator, ScalarFormatter
 
 DEF_RUN = ("results/campaign2027/offline/"
            "run_212a98b29759e3e4f21e29c33341a47c3da9c80c")
@@ -45,7 +50,12 @@ def save(fig, out, stem):
 
 def fig_certificate(run, out):
     rs = rows(f"{run}/s2_odometry_coverage.csv")
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 2.5))
+    # Generated at double the physical print size (matching the
+    # generate-to-display shrink ratio used by fig_trajectories/fig_
+    # robustness/fig_disturbance) so the same absolute font sizes print at
+    # a consistent visual scale across all figures instead of looking
+    # oversized relative to the others.
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14.0, 5.0))
     markers = {"8": "o", "16": "s"}
     for nv in ("8", "16"):
         sel = [r for r in rs if r["n_views"] == nv]
@@ -55,7 +65,7 @@ def fig_certificate(run, out):
     ax1.loglog(lims, lims, "k-", lw=0.8, label="ideal")
     ax1.set_xlabel("predicted variance [rad$^2$]")
     ax1.set_ylabel("empirical variance [rad$^2$]")
-    ax1.legend(fontsize=6, loc="upper left", framealpha=0.9,
+    ax1.legend(fontsize=9, loc="upper right", framealpha=0.9,
                handlelength=1.2, borderpad=0.3, labelspacing=0.25)
     ax1.grid(alpha=0.3, which="both")
     ax1.set_title("(a) predicted vs empirical", fontsize=9)
@@ -69,9 +79,16 @@ def fig_certificate(run, out):
     ax2.set_ylim(0.90, 1.0)
     ax2.set_xlabel("translation noise per increment [cm]")
     ax2.set_ylabel("realized 95% coverage")
-    ax2.legend(fontsize=5.5, loc="lower left", ncol=3, framealpha=0.85,
-               handlelength=1.1, borderpad=0.25, labelspacing=0.2,
-               columnspacing=0.7, handletextpad=0.4)
+    ax2.legend(fontsize=9, loc="upper right", ncol=1, framealpha=0.9,
+               handlelength=1.1, borderpad=0.3, labelspacing=0.25)
+    # Explicit ticks at the tested noise levels only: the default log-scale
+    # minor-tick locator crowds in extra labels (2x, 3x, ...) that overlap
+    # when the span is under one decade.
+    xticks = sorted(set(col(rs, "sigma_xy_step_m") * 100))
+    ax2.xaxis.set_minor_locator(NullLocator())
+    ax2.set_xticks(xticks)
+    ax2.xaxis.set_major_formatter(ScalarFormatter())
+    ax2.tick_params(axis="x", labelsize=7)
     ax2.grid(alpha=0.3, which="both")
     ax2.set_title("(b) coverage across odometry noise", fontsize=9)
     save(fig, out, "fig_certificate")
@@ -79,7 +96,9 @@ def fig_certificate(run, out):
 
 def fig_longhorizon(run, out):
     rs = rows(f"{run}/s6_drift_timeseries.csv")
-    fig, ax = plt.subplots(figsize=(3.4, 2.2))
+    # See fig_certificate: doubled canvas to match the print scale of the
+    # other single-column figures instead of rendering oversized.
+    fig, ax = plt.subplots(figsize=(6.8, 4.4))
     ax.semilogy(col(rs, "t"), np.maximum(col(rs, "deadreck_err"), 1e-3),
                 color="tab:gray", label="dead-reckoned pose error")
     ax.semilogy(col(rs, "t"), np.maximum(col(rs, "dist"), 1e-3),
@@ -146,7 +165,7 @@ def fig_robustness(run, out):
     ax1.set_xlabel("degradation level")
     ax1.set_ylabel("median station RMSE [m]")
     ax1.set_ylim(0, 0.25)
-    ax1.legend(fontsize=6, loc="upper left")
+    ax1.legend(fontsize=6, loc="upper right")
     ax1.grid(alpha=0.3)
     ax1.set_title("(a) communication stress, all $200/200$", fontsize=9)
 
@@ -159,9 +178,15 @@ def fig_robustness(run, out):
              lw=1.1, label="bearing noise [deg]")
     ax2.set_xscale("log")
     ax2.set_xlabel("noise level")
-    ax2.set_ylabel("median station RMSE [m]")
     ax2.set_ylim(0, 0.25)
-    ax2.legend(fontsize=6, loc="upper left")
+    ax2.legend(fontsize=6, loc="upper right")
+    # Explicit ticks at the tested noise levels only (see fig_certificate):
+    # avoids overlapping auto-generated log-scale minor tick labels.
+    xticks = sorted(set(col(rng, "sigma") * 10) | set(col(brg, "sigma")))
+    ax2.xaxis.set_minor_locator(NullLocator())
+    ax2.set_xticks(xticks)
+    ax2.xaxis.set_major_formatter(ScalarFormatter())
+    ax2.tick_params(axis="x", labelsize=7)
     ax2.grid(alpha=0.3, which="both")
     ax2.set_title("(b) relay noise, all $200/200$", fontsize=9)
     save(fig, out, "fig_robustness")
