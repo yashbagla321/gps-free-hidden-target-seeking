@@ -41,8 +41,14 @@ else()
     set(GFS_BUILD_MODE_VALUE "$<CONFIG>")
 endif()
 
-add_executable(gps_free_seeking_sim src/main.cpp)
-add_executable(gps_free_seeking_tests tests/CoreTests.cpp)
+# Legacy pre-SE(2)-gauge model (Model.hpp/Scenarios.hpp): the vehicle here
+# carries a compass (world-aligned heading), which conflicts with the
+# paper's premise of body-frame-only odometry and an unknown relay-to-
+# odometry yaw. Not used by any paper result; excluded from the default
+# build and kept only for reference. Build explicitly with
+# `cmake --build . --target gps_free_seeking_sim` if needed.
+add_executable(gps_free_seeking_sim EXCLUDE_FROM_ALL src/main.cpp)
+add_executable(gps_free_seeking_tests EXCLUDE_FROM_ALL tests/CoreTests.cpp)
 
 # Campaign 2027 SE(2) stack (registration + supervisor + fixed-lag smoother).
 add_executable(gps_free_seeking_se2_tests tests/Se2CoreTests.cpp)
@@ -54,5 +60,4 @@ target_compile_definitions(gps_free_seeking_campaign PRIVATE
     GFS_BUILD_MODE="${GFS_BUILD_MODE_VALUE}")
 
 enable_testing()
-add_test(NAME core_tests COMMAND gps_free_seeking_tests)
 add_test(NAME se2_core_tests COMMAND gps_free_seeking_se2_tests)

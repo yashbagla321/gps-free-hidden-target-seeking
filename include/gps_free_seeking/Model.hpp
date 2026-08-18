@@ -1,4 +1,12 @@
 #pragma once
+// LEGACY pre-SE(2)-gauge model, kept for reference only. This vehicle
+// carries a compass (world-aligned heading), which conflicts with the
+// current paper's premise of body-frame-only odometry and an unknown
+// relay-to-odometry yaw (see WorldSE2.hpp, used by every current paper
+// result: campaign_main.cpp, icra_main.cpp/smoke_main.cpp, viz_dump.cpp,
+// Se2CoreTests.cpp). Only main.cpp and CoreTests.cpp (pre-ICRA targets,
+// excluded from the public companion repo's default build) still use this.
+//
 // World model, sensing model, and simulation parameters for GPS-free
 // hidden-target seeking through one unknown-pose range-bearing relay beacon.
 //
