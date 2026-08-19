@@ -82,3 +82,37 @@ Run the package tests after every build:
 
     colcon test --packages-select gps_free_seeking_gz
     colcon test-result --verbose
+
+## Video capture (illustrative, not citable)
+
+`worlds/gfs_hidden_target_video.sdf` is a video-only twin of
+`gfs_hidden_target.sdf`: identical physics, models, and plugins, plus a
+static overhead camera and the `Sensors` render plugin. It is a separate
+file so the citable world backing the paper's Gazebo numbers is never
+touched; the camera/render additions do not feed back into the
+estimator, controller, or `/odom`.
+
+Capture a clip against it (the launch file's `extra_gz_args` and the
+extra `/camera` bridge topic are no-ops for the citable world, so this
+does not change any citable invocation above):
+
+    ros2 launch gps_free_seeking_gz gfs_seeking_gz.launch.py \
+      world:=src/gps_free_seeking_gz/worlds/gfs_hidden_target_video.sdf \
+      extra_gz_args:='--headless-rendering' \
+      seed:=12 mission_s:=16 scenario:=nominal \
+      output_dir:=/tmp/gfs_video output_name:=nominal.csv &
+    python3 src/gps_free_seeking_gz/scripts/capture_camera_video.py \
+      --out /tmp/gfs_video/nominal.mp4 --duration 24 --fps 30 \
+      --frames-csv /tmp/gfs_video/nominal.frames.csv
+
+Set `--duration` comfortably longer than `mission_s`: the capture script
+stops on its own once the mission ends and the camera topic goes quiet
+for `--source-quiet-timeout` seconds (default 8s), which is what lets the
+evaluator finish `mission_s` cleanly and flush a complete telemetry CSV
+before anything shuts down. See the script's module docstring for the
+three ways it can exit.
+
+`../../../scripts/make_gazebo_video.py` composites one or more such
+captures (camera feed + the evaluator CSV's ground-truth telemetry) into
+an annotated reel; see that script's docstring and the top-level
+`README.md`'s Video section for the assembled output.

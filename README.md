@@ -122,6 +122,20 @@ campaign and is referenced by its SHA-256 in `aggregate.json`'s
 produced these numbers, including its internal `icra2027`-named comment and
 path, rather than renamed to match this repo's `campaign2027` convention.
 
+### Gazebo video (illustrative, not citable)
+
+`ros2_ws/src/gps_free_seeking_gz/scripts/capture_camera_video.py` and
+`scripts/make_gazebo_video.py` capture an overhead camera from a
+video-only twin of the citable world (`worlds/gfs_hidden_target_video.sdf`
+-- identical physics/models, camera and render plugin only) and composite
+it with live distance-to-target, odometry-drift, and EXCITE/SEEK/MAINTAIN
+mode telemetry pulled from the evaluator's ground-truth CSV:
+
+![Gazebo reel: disturbance recovery, MAINTAIN mode reached](results/figures/fig_gazebo_video.png)
+
+See `ros2_ws/src/gps_free_seeking_gz/README.md`'s Video capture section
+for how to run the capture and compositing scripts.
+
 ## Reproducing
 
 Every manifest records the exact source commit, build flags, and config hash
