@@ -1,0 +1,194 @@
+<?xml version="1.0" ?>
+<!-- Video-capture twin of gfs_hidden_target.sdf: identical physics, models,
+     and plugins, plus one static overhead camera for illustrative footage.
+     Not used for any citable statistic -- the camera and sensors-system
+     plugin are purely passive additions and do not alter vehicle dynamics,
+     odometry, or the estimator/controller pipeline. Kept as a separate file
+     so the citable world backing the paper's Gazebo numbers stays untouched. -->
+<sdf version="1.9">
+  <world name="gfs_hidden_target_video">
+    <!-- 0.25, not 1.0: under WSL2 + software (llvmpipe) Ogre2 rendering,
+         letting physics run at full real-time starves the render/bridge
+         threads, which then repeat stale camera frames for stretches before
+         bursting forward once they catch up (ground-truth telemetry keeps
+         advancing smoothly the whole time -- this is a rendering/bridge
+         artifact, not a physics stall). Slowing physics down gives the
+         renderer enough wall-clock slack per sim-second to mostly keep up;
+         any residual stutter is handled by deduplicating repeated frames in
+         scripts/make_gazebo_video.py. -->
+    <physics name="default" type="ode">
+      <max_step_size>0.005</max_step_size>
+      <real_time_factor>0.25</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <light type="directional" name="sun">
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <direction>-0.3 0.2 -0.9</direction>
+    </light>
+
+    <!-- Every material below sets both <ambient> and <diffuse> (to the same
+         color): Ogre2 renders a material that has <ambient> but no
+         <diffuse> as pure black under directional lighting, since a
+         directional light contributes almost entirely via diffuse
+         reflection. Dropping <diffuse> anywhere here silently reproduces
+         that black-frame bug. -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>60 60</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>60 60</size></plane></geometry>
+          <material><ambient>0.75 0.75 0.75 1</ambient><diffuse>0.75 0.75 0.75 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Overhead capture camera: static, straight down (pitch pi/2), height
+         and (x,y) center chosen so the full mission bounding box -- relay
+         (-6,-1.5), target (1.5,9), and the occluder's 3 m long axis
+         (2.6-5.6 in x) -- fits in frame with margin; see the framing
+         derivation in the session that added this file if re-tuning.
+         640x480 @ 15 Hz, not 1280x960 @ 30 Hz: the higher-bandwidth feed
+         (~110 MB/s) made the bridge stutter far worse (max ~131 consecutive
+         repeated frames vs ~30-60 at this size/rate in side-by-side tests).
+         Lower bandwidth alone didn't eliminate the stutter (see the
+         real_time_factor comment above for the actual fix), but it still
+         reduces how often it happens, so both are kept. -->
+    <model name="capture_camera">
+      <static>true</static>
+      <pose>-0.2 4 12 0 1.5707963 0</pose>
+      <link name="link">
+        <sensor name="camera" type="camera">
+          <camera>
+            <horizontal_fov>1.4</horizontal_fov>
+            <image><width>640</width><height>480</height></image>
+            <clip><near>0.1</near><far>100</far></clip>
+          </camera>
+          <always_on>1</always_on>
+          <update_rate>15</update_rate>
+          <topic>camera</topic>
+        </sensor>
+      </link>
+    </model>
+
+    <!-- Occluder near the target region: conveys the hidden-target premise
+         visually while leaving the mission corridor (x in [0, 1.5]) clear.
+         The seeker is a greedy certified controller with NO obstacle
+         avoidance (out of scope); the world supplies collision realism and
+         the mission geometry is chosen collision-free, per the plan. -->
+    <model name="occluder">
+      <static>true</static>
+      <pose>4.1 5.0 0.75 0 0 0</pose>
+      <link name="wall">
+        <collision name="c"><geometry><box><size>3.0 0.25 1.5</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>3.0 0.25 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.4 1</ambient><diffuse>0.35 0.35 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Visual markers only: relay pole and target disc (no sensing). -->
+    <model name="relay_marker">
+      <static>true</static>
+      <pose>-6.0 -1.5 0.5 0 0 0</pose>
+      <link name="l">
+        <visual name="v">
+          <geometry><cylinder><radius>0.08</radius><length>1.0</length></cylinder></geometry>
+          <material><ambient>0.1 0.7 0.1 1</ambient><diffuse>0.1 0.7 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="target_marker">
+      <static>true</static>
+      <pose>1.5 9.0 0.02 0 0 0</pose>
+      <link name="l">
+        <visual name="v">
+          <geometry><cylinder><radius>0.25</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.8 0.1 0.1 1</ambient><diffuse>0.8 0.1 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Differential-drive vehicle with real wheel joints. -->
+    <model name="gfs_vehicle">
+      <pose>0 0 0.12 0 0 0.4</pose>
+      <link name="chassis">
+        <inertial>
+          <mass>8.0</mass>
+          <inertia><ixx>0.12</ixx><iyy>0.20</iyy><izz>0.26</izz></inertia>
+        </inertial>
+        <collision name="c"><geometry><box><size>0.45 0.30 0.12</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.45 0.30 0.12</size></box></geometry>
+          <material><ambient>0.1 0.3 0.8 1</ambient><diffuse>0.1 0.3 0.8 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="left_wheel">
+        <pose relative_to="chassis">0 0.19 -0.02 -1.5707 0 0</pose>
+        <inertial><mass>0.6</mass><inertia><ixx>0.002</ixx><iyy>0.002</iyy><izz>0.003</izz></inertia></inertial>
+        <collision name="c">
+          <geometry><cylinder><radius>0.10</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.1</mu><mu2>0.9</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v"><geometry><cylinder><radius>0.10</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.05 0.05 0.05 1</ambient><diffuse>0.05 0.05 0.05 1</diffuse></material></visual>
+      </link>
+      <link name="right_wheel">
+        <pose relative_to="chassis">0 -0.19 -0.02 -1.5707 0 0</pose>
+        <inertial><mass>0.6</mass><inertia><ixx>0.002</ixx><iyy>0.002</iyy><izz>0.003</izz></inertia></inertial>
+        <collision name="c">
+          <geometry><cylinder><radius>0.10</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.1</mu><mu2>0.9</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v"><geometry><cylinder><radius>0.10</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.05 0.05 0.05 1</ambient><diffuse>0.05 0.05 0.05 1</diffuse></material></visual>
+      </link>
+      <link name="caster">
+        <pose relative_to="chassis">-0.18 0 -0.07 0 0 0</pose>
+        <inertial><mass>0.2</mass><inertia><ixx>0.0004</ixx><iyy>0.0004</iyy><izz>0.0004</izz></inertia></inertial>
+        <collision name="c">
+          <geometry><sphere><radius>0.05</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.05</mu><mu2>0.05</mu2></ode></friction></surface>
+        </collision>
+        <visual name="v"><geometry><sphere><radius>0.05</radius></sphere></geometry></visual>
+      </link>
+      <joint name="left_wheel_joint" type="revolute">
+        <parent>chassis</parent><child>left_wheel</child>
+        <axis><xyz>0 0 1</xyz></axis>
+      </joint>
+      <joint name="right_wheel_joint" type="revolute">
+        <parent>chassis</parent><child>right_wheel</child>
+        <axis><xyz>0 0 1</xyz></axis>
+      </joint>
+      <joint name="caster_joint" type="ball">
+        <parent>chassis</parent><child>caster</child>
+      </joint>
+
+      <!-- Physics wheel odometry (estimator input). -->
+      <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+        <left_joint>left_wheel_joint</left_joint>
+        <right_joint>right_wheel_joint</right_joint>
+        <wheel_separation>0.38</wheel_separation>
+        <wheel_radius>0.10</wheel_radius>
+        <topic>/model/gfs_vehicle/cmd_vel</topic>
+        <odom_topic>/model/gfs_vehicle/odometry</odom_topic>
+        <odom_publish_frequency>50</odom_publish_frequency>
+      </plugin>
+      <!-- Ground-truth channel (relay emulator + evaluator ONLY). -->
+      <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+        <odom_topic>/gfs/truth_odom</odom_topic>
+        <odom_publish_frequency>50</odom_publish_frequency>
+      </plugin>
+    </model>
+  </world>
+</sdf>

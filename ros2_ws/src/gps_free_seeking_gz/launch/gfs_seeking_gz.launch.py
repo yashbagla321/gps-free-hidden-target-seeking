@@ -46,6 +46,10 @@ def generate_launch_description():
         DeclareLaunchArgument("output_dir",
                               default_value="results/campaign2027/ros_gz"),
         DeclareLaunchArgument("output_name", default_value="gz_run.csv"),
+        # Empty by default (no effect on citable runs); set to
+        # "--headless-rendering" to enable the Sensors system's render
+        # thread for worlds with a camera (e.g. gfs_hidden_target_video.sdf).
+        DeclareLaunchArgument("extra_gz_args", default_value=""),
     ]
     cfg = LaunchConfiguration("config")
     as_float = lambda name: ParameterValue(
@@ -64,6 +68,8 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(
                 PathJoinSubstitution([gz, "launch", "gz_sim.launch.py"])),
             launch_arguments={"gz_args": ["-r -s ",
+                                          LaunchConfiguration("extra_gz_args"),
+                                          " ",
                                           LaunchConfiguration("world")]}.items(),
         ),
         Node(
@@ -75,6 +81,10 @@ def generate_launch_description():
                 "/model/gfs_vehicle/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist",
                 "/model/gfs_vehicle/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry",
                 "/gfs/truth_odom@nav_msgs/msg/Odometry[gz.msgs.Odometry",
+                # No-op unless the world has a "camera" sensor (video-capture
+                # world only): bridges idle waiting for a topic that never
+                # appears in the citable world.
+                "/camera@sensor_msgs/msg/Image[gz.msgs.Image",
             ],
             output="screen",
             on_exit=Shutdown(),
