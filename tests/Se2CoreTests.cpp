@@ -215,6 +215,59 @@ void testCorrelatedOdometryVariancePredictsError() {
           "correlated odometry certificate matches empirical yaw error");
 }
 
+// Review discriminator (Phase 3, R1-R4): the pre-fix arXiv appendix formula
+// treated range noise as purely radial and claimed it cancels identically
+// in the yaw estimator's cross product, i.e. predicted EXACTLY ZERO
+// packet-noise yaw variance under pure range noise (sigma_beta = 0). The
+// correct projection is onto the direction perpendicular to the CENTERED
+// vector b_k, not the raw relay vector l_k^v, and those directions differ
+// in general (Remark 7 of the arXiv appendix), so range noise survives at
+// first order. This test is the permanent, machine-checked version of that
+// counterexample: with sigma_beta = 0, both the certificate's own
+// prediction and the empirical yaw variance must be strictly positive.
+void testPureRangeNoiseYawVarianceNonzero() {
+    const double theta = 0.9;
+    const Vec2 x_o{1.0, 0.5}, p_o{6.0, 4.0};
+    const double sr = 0.05, sb = 0.0;  // pure range noise, zero bearing noise
+    Rng rng(17);
+    std::vector<Vec2> poses = {{0, 0}, {1.5, 0.3}, {2.5, 1.8}, {1.0, 3.0},
+                               {3.5, 3.2}, {4.0, 1.0}};
+    double pred_var_sum = 0.0;
+    int pred_n = 0;
+    std::vector<double> errs;
+    for (int mc = 0; mc < 2000; ++mc) {
+        WeightedWindowRegistration reg;
+        for (size_t i = 0; i < poses.size(); ++i) {
+            RelayPacket p =
+                makePacket(0.1 * i, theta, poses[i], x_o, p_o, sr, sb);
+            p.r_v += rng.gauss(sr);
+            p.r_t += rng.gauss(sr);
+            // beta_v, beta_t are left exactly noiseless: sigma_beta = 0.
+            reg.addView(0.1 * i, poses[i], p);
+        }
+        double th, var, info, spread, corr;
+        if (!reg.solve(&th, &var, &info, &spread, &corr)) continue;
+        errs.push_back(wrapAngle(th - theta));
+        pred_var_sum += var;
+        ++pred_n;
+    }
+    double emp = 0.0;
+    for (double e : errs) emp += e * e;
+    emp /= std::max<size_t>(1, errs.size());
+    const double mean_pred = pred_n ? pred_var_sum / pred_n : 0.0;
+    std::printf(
+        "      pure-range-noise predicted var = %.3e, empirical = %.3e\n",
+        mean_pred, emp);
+    CHECK(mean_pred > 1e-9,
+          "certificate predicts nonzero yaw variance under pure range noise "
+          "(pre-fix formula predicted exactly zero)");
+    CHECK(emp > 1e-9,
+          "empirical yaw variance is also nonzero under pure range noise");
+    const double ratio = emp / std::max(mean_pred, 1e-18);
+    CHECK(ratio > 0.5 && ratio < 2.0,
+          "pure-range-noise predicted variance matches empirical within 2x");
+}
+
 void advanceStraight(GfsPipeline* pipe, double t, double dx) {
     OdometrySample o;
     o.t = t;
@@ -464,6 +517,7 @@ int main() {
     testRepeatedPoseRejected();
     testDeliveredVariancePredictsError();
     testCorrelatedOdometryVariancePredictsError();
+    testPureRangeNoiseYawVarianceNonzero();
     testDelayedPacketCompensationAndMonotoneTiming();
     testChangePersistenceResetsOnUncertifiedWindow();
     testStationTaskEventScoring();

@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("baselines", "conditioning", "odometry_coverage",
                  "relay_noise", "communication", "odometry", "drift",
-                 "yaw_step")]
+                 "yaw_step", "covariance_ablation")]
     [string]$Study,
     [int]$N = 200,
     [string]$Method = "-",
@@ -45,6 +45,7 @@ $existingManifest = switch ($Study) {
         $scenario = if ($Method -eq "-") { "transit" } else { $Method }
         "s7_disturbance_${scenario}_manifest.json"
     }
+    "covariance_ablation" { "s9_covariance_ablation_manifest.json" }
 }
 if (-not $dirty -and -not $AllowOverwrite -and
     (Test-Path (Join-Path $runDir $existingManifest))) {

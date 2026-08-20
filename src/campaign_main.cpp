@@ -3,6 +3,7 @@
 // Usage:
 //   gps_free_seeking_campaign baselines [n_seeds] [method] [git_head]
 //   gps_free_seeking_campaign conditioning [n_mc] [-] [git_head]
+//   gps_free_seeking_campaign covariance_ablation [n_mc] [-] [git_head]
 //
 // Writes per-trial CSVs, per-method summaries, and provenance manifests into
 // results/campaign2027/offline/.
@@ -27,10 +28,11 @@ std::string g_out = "results/campaign2027/offline";  // per-run dir set in main
 void studyBaselines(int n_seeds, const std::string& only_method,
                     const std::string& git_head) {
     const MethodKind kinds[] = {
-        MethodKind::kProposed,       MethodKind::kProposedSmoother,
-        MethodKind::kOracleYaw,      MethodKind::kEkf,
-        MethodKind::kEndpointOnly,   MethodKind::kFixedDecayExc,
-        MethodKind::kNoExcitation,
+        MethodKind::kProposed,           MethodKind::kProposedSmoother,
+        MethodKind::kOracleYaw,          MethodKind::kEkf,
+        MethodKind::kEndpointOnly,       MethodKind::kFixedDecayExc,
+        MethodKind::kNoExcitation,       MethodKind::kProposedDiagVar,
+        MethodKind::kProposedPacketOnly, MethodKind::kAnchoredNaive,
     };
     const unsigned seed_base = 10000;
     OdomErrorParams oe;
@@ -291,6 +293,205 @@ void studyOdometryCoverage(int n_mc, const std::string& git_head) {
         "\"n_views\": [8, 16], \"steps_per_view\": 5}");
 }
 
+// Covariance-ablation study (review response, Phase 3): isolates the
+// contribution of the paper's central claim -- modeling cross-view
+// odometry correlation in closed form -- by running the identical
+// estimator and controller under three certificate variance models
+// (Registration.hpp VarianceModel): kFull (Theorem 3, the paper's
+// certificate), kDiag (naive independent-pose covariance, dropping the
+// shared-increment correlation), and kPacketOnly (pose term dropped
+// entirely, as if odometry were exact). Reuses the S2 odometry-coverage
+// grid for the offline variance-ratio/coverage/false-certification
+// numbers, then adds one closed-loop success cell per model at the
+// nominal condition. Expected story: kFull stays near nominal coverage;
+// kDiag and kPacketOnly undercover.
+void studyCovarianceAblation(int n_mc, const std::string& git_head) {
+    struct ModelSpec {
+        VarianceModel model;
+        const char* name;
+    };
+    const ModelSpec models[] = {
+        {VarianceModel::kFull, "full"},
+        {VarianceModel::kDiag, "diag"},
+        {VarianceModel::kPacketOnly, "packet_only"},
+    };
+    const double cert_on_rad = SupervisorConfig{}.cert_on_rad;
+
+    std::ofstream f(std::string(kOut) + "/s9_covariance_ablation.csv");
+    f << "model,sigma_xy_step_m,n_views,pred_var,emp_mse,ratio,cov90,cov95,"
+         "cov99,false_cert_rate,n_realizations\n";
+    std::ofstream ftr(std::string(kOut) +
+                      "/s9_covariance_ablation_trials.csv");
+    ftr << "model,sigma_xy_step_m,n_views,mc,theta_err,pred_var,z,"
+           "would_certify,false_cert\n";
+
+    const double theta = 1.1;
+    const Vec2 x_o{2.0, 1.0}, p_o{9.0, 3.0};
+    const double sr = 0.10, sb = 0.0175;
+    const int steps_per_view = 5;
+
+    // Pooled accumulators per model, across the whole grid (matching the
+    // paper's "pooled" convention for Remark 1).
+    struct Pool {
+        double ratio_num = 0.0, ratio_den = 0.0;
+        long long n = 0, cov95_n = 0, false_cert_n = 0;
+    };
+    std::vector<Pool> pools(3);
+
+    int cell = 0;
+    for (size_t mi = 0; mi < 3; ++mi) {
+        const ModelSpec& spec = models[mi];
+        for (double sigma_step : {0.0025, 0.005, 0.01, 0.02, 0.05}) {
+            for (int n_views : {8, 16}) {
+                std::vector<Vec2> truth;
+                for (int i = 0; i < n_views; ++i) {
+                    const double u = static_cast<double>(i) / (n_views - 1);
+                    truth.push_back(Vec2{2.0 * u, 0.6 * std::sin(kPi * u)});
+                }
+                Rng rng(81000u + static_cast<unsigned>(cell++));
+                std::vector<double> errs, zs;
+                double pred_sum = 0.0;
+                int pred_n = 0, false_cert_n = 0;
+                for (int mc = 0; mc < n_mc; ++mc) {
+                    RegistrationConfig rcfg;
+                    rcfg.variance_model = spec.model;
+                    WeightedWindowRegistration reg(rcfg);
+                    Vec2 s_hat = truth.front();
+                    double pose_var = 0.0;
+                    for (int i = 0; i < n_views; ++i) {
+                        if (i > 0) {
+                            const Vec2 ds = truth[i] - truth[i - 1];
+                            const double inc_sigma =
+                                sigma_step * std::sqrt(steps_per_view);
+                            s_hat += ds + Vec2{rng.gauss(inc_sigma),
+                                               rng.gauss(inc_sigma)};
+                            pose_var +=
+                                steps_per_view * sigma_step * sigma_step;
+                        }
+                        RelayPacket p;
+                        p.t = 0.05 * i;
+                        const Vec2 lv = rotateT(theta, truth[i] - x_o);
+                        const Vec2 lt = rotateT(theta, p_o - x_o);
+                        p.r_v = lv.norm() + rng.gauss(sr);
+                        p.beta_v = std::atan2(lv.y, lv.x) + rng.gauss(sb);
+                        p.r_t = lt.norm() + rng.gauss(sr);
+                        p.beta_t = std::atan2(lt.y, lt.x) + rng.gauss(sb);
+                        p.sigma_r = sr;
+                        p.sigma_beta = sb;
+                        p.valid = true;
+                        reg.addView(p.t, s_hat, p, pose_var);
+                    }
+                    double th, var, info, spread, corr;
+                    if (!reg.solve(&th, &var, &info, &spread, &corr)) continue;
+                    const double err = wrapAngle(th - theta);
+                    const double z = err / std::sqrt(std::max(var, 1e-18));
+                    const bool would_certify =
+                        1.96 * std::sqrt(std::max(var, 0.0)) <= cert_on_rad;
+                    const bool false_cert =
+                        would_certify && std::fabs(err) > cert_on_rad;
+                    errs.push_back(err);
+                    zs.push_back(z);
+                    pred_sum += var;
+                    ++pred_n;
+                    if (false_cert) ++false_cert_n;
+                    ftr << spec.name << ',' << sigma_step << ',' << n_views
+                        << ',' << mc << ',' << err << ',' << var << ',' << z
+                        << ',' << (would_certify ? 1 : 0) << ','
+                        << (false_cert ? 1 : 0) << '\n';
+                }
+                double mse = 0.0;
+                int c90 = 0, c95 = 0, c99 = 0;
+                for (size_t i = 0; i < errs.size(); ++i) {
+                    mse += errs[i] * errs[i];
+                    if (std::fabs(zs[i]) <= 1.645) ++c90;
+                    if (std::fabs(zs[i]) <= 1.960) ++c95;
+                    if (std::fabs(zs[i]) <= 2.576) ++c99;
+                }
+                const auto nz = std::max<size_t>(1, errs.size());
+                mse /= nz;
+                const double pred = pred_n ? pred_sum / pred_n : 0.0;
+                const double ratio = pred > 0.0 ? mse / pred : 0.0;
+                const double false_rate =
+                    static_cast<double>(false_cert_n) / nz;
+                f << spec.name << ',' << sigma_step << ',' << n_views << ','
+                  << pred << ',' << mse << ',' << ratio << ','
+                  << static_cast<double>(c90) / nz << ','
+                  << static_cast<double>(c95) / nz << ','
+                  << static_cast<double>(c99) / nz << ',' << false_rate
+                  << ',' << errs.size() << '\n';
+                std::printf(
+                    "[S9] model=%-11s sigma=%.4f n=%d ratio=%.2f cov95=%.3f "
+                    "false_cert=%.3f\n",
+                    spec.name, sigma_step, n_views, ratio,
+                    static_cast<double>(c95) / nz, false_rate);
+                Pool& pool = pools[mi];
+                pool.ratio_num += mse;
+                pool.ratio_den += pred;
+                pool.n += static_cast<long long>(errs.size());
+                pool.cov95_n += c95;
+                pool.false_cert_n += false_cert_n;
+            }
+        }
+    }
+
+    // Closed-loop success at the nominal condition, one cell per model
+    // (matching S3 baselines: same seed base and geometry sampler).
+    const MethodKind kinds[] = {MethodKind::kProposed,
+                                MethodKind::kProposedDiagVar,
+                                MethodKind::kProposedPacketOnly};
+    const int n_closed_loop = 200;
+    const unsigned seed_base = 10000;
+    OdomErrorParams oe;
+    oe.bias_vel = Vec2{0.01, -0.005};
+    RelayErrorParams re;
+
+    std::ofstream fs(std::string(kOut) +
+                     "/s9_covariance_ablation_summary.csv");
+    fs << "model,pooled_ratio,pooled_cov95,pooled_false_cert_rate,"
+          "closed_loop_n,closed_loop_success_rate,closed_loop_wilson_lo,"
+          "closed_loop_wilson_hi,closed_loop_median_rmse\n";
+    for (size_t mi = 0; mi < 3; ++mi) {
+        const Pool& pool = pools[mi];
+        const double pooled_ratio =
+            pool.ratio_den > 0.0 ? pool.ratio_num / pool.ratio_den : 0.0;
+        const double pooled_cov95 =
+            pool.n > 0 ? static_cast<double>(pool.cov95_n) / pool.n : 0.0;
+        const double pooled_false_rate =
+            pool.n > 0 ? static_cast<double>(pool.false_cert_n) / pool.n
+                       : 0.0;
+
+        int succ = 0;
+        std::vector<double> rmse;
+        for (int i = 0; i < n_closed_loop; ++i) {
+            Rng grng(seed_base + i);
+            const TrialGeometry geo = sampleGeometry(grng);
+            const TrialMetrics m =
+                runCampaignTrial(kinds[mi], geo, oe, re, seed_base + i);
+            succ += m.success ? 1 : 0;
+            rmse.push_back(m.station_rmse);
+        }
+        const WilsonInterval wi = wilson95(succ, n_closed_loop);
+        fs << models[mi].name << ',' << pooled_ratio << ',' << pooled_cov95
+           << ',' << pooled_false_rate << ',' << n_closed_loop << ','
+           << static_cast<double>(succ) / n_closed_loop << ',' << wi.lo
+           << ',' << wi.hi << ',' << medianOf(rmse) << '\n';
+        std::printf(
+            "[S9-SUMMARY] model=%-11s pooled_ratio=%.2f pooled_cov95=%.3f "
+            "false_cert=%.3f closed_loop=%d/%d med_rmse=%.3f\n",
+            models[mi].name, pooled_ratio, pooled_cov95, pooled_false_rate,
+            succ, n_closed_loop, medianOf(rmse));
+    }
+
+    writeManifest(
+        std::string(kOut) + "/s9_covariance_ablation_manifest.json",
+        "s9_covariance_ablation", git_head, n_mc, 81000, 0.0,
+        "\"measurement_noise\": {\"sigma_r_m\": 0.10, "
+        "\"sigma_beta_rad\": 0.0175},\n  \"odometry_grid\": {"
+        "\"sigma_xy_step_m\": [0.0025, 0.005, 0.01, 0.02, 0.05], "
+        "\"n_views\": [8, 16], \"steps_per_view\": 5},\n  \"models\": "
+        "[\"full\", \"diag\", \"packet_only\"],\n  \"closed_loop\": {"
+        "\"n\": 200, \"seed_base\": 10000, \"cert_on_deg\": 10.0}");
+}
 
 // Study 3: independent relay range / bearing noise sweeps (proposed method).
 void studyRelayNoise(int n_seeds, const std::string& git_head) {
@@ -774,6 +975,8 @@ int main(int argc, char** argv) {
     else if (study == "drift") studyDrift(n, git_head);
     else if (study == "yaw_step")
         studyYawStep(n, git_head, method.empty() ? "transit" : method);
+    else if (study == "covariance_ablation")
+        studyCovarianceAblation(n, git_head);
     else {
         std::fprintf(stderr, "unknown study %s\n", study.c_str());
         return 1;

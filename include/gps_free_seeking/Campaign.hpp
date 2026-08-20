@@ -25,6 +25,21 @@ enum class MethodKind : int {
     kEndpointOnly = 4,
     kFixedDecayExc = 5,
     kNoExcitation = 6,
+    // Covariance-ablation variants (review response, Phase 3): identical
+    // estimator and controller, only the certificate's variance model
+    // differs (Registration.hpp VarianceModel). Isolates the contribution
+    // of modeling cross-view odometry correlation in closed form.
+    kProposedDiagVar = 7,
+    kProposedPacketOnly = 8,
+    // Naive anchored baseline (review response, Phase 3): models what
+    // happens if the prior globally-anchored method [8],[9] -- which never
+    // needed to resolve a relay-to-odometry yaw because the global vehicle
+    // trajectory was given -- is applied unmodified once GPS is removed and
+    // no gauge calibration is available. It pins the relay-to-odometry yaw
+    // at zero for the whole mission (the only substitute a method with no
+    // calibration step can fall back on) and otherwise shares the same
+    // filter and controller as the proposed method.
+    kAnchoredNaive = 9,
 };
 
 inline const char* methodName(MethodKind m) {
@@ -36,6 +51,9 @@ inline const char* methodName(MethodKind m) {
         case MethodKind::kEndpointOnly: return "endpoint_only";
         case MethodKind::kFixedDecayExc: return "fixed_decay_exc";
         case MethodKind::kNoExcitation: return "no_excitation";
+        case MethodKind::kProposedDiagVar: return "proposed_diag_var";
+        case MethodKind::kProposedPacketOnly: return "proposed_packet_only";
+        case MethodKind::kAnchoredNaive: return "anchored_naive";
     }
     return "?";
 }
@@ -116,6 +134,10 @@ inline TrialMetrics runCampaignTrial(MethodKind kind, const TrialGeometry& geo,
         scfg.exc_mode = ExcitationMode::kFixedDecay;
     if (kind == MethodKind::kNoExcitation)
         scfg.exc_mode = ExcitationMode::kNone;
+    if (kind == MethodKind::kProposedDiagVar)
+        rcfg.variance_model = VarianceModel::kDiag;
+    if (kind == MethodKind::kProposedPacketOnly)
+        rcfg.variance_model = VarianceModel::kPacketOnly;
 
     GfsPipeline pipe(scfg, rcfg);
     EkfPipeline ekf(scfg);
@@ -165,6 +187,12 @@ inline TrialMetrics runCampaignTrial(MethodKind kind, const TrialGeometry& geo,
             } else {
                 if (kind == MethodKind::kOracleYaw)
                     pipe.setOracleYaw(world.trueTheta());
+                // Re-asserted every packet, exactly like the oracle hook
+                // above: pins the control-path yaw at zero and immunizes it
+                // against the change-detection adoption path, so the naive
+                // baseline never recalibrates (the point of the ablation).
+                if (kind == MethodKind::kAnchoredNaive)
+                    pipe.setOracleYaw(0.0);
                 pipe.onPacket(pkt);
                 if (use_smoother) {
                     FixedLagSmoother::Node nd;

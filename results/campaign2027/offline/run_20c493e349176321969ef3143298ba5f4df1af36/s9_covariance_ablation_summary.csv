@@ -1,0 +1,4 @@
+model,pooled_ratio,pooled_cov95,pooled_false_cert_rate,closed_loop_n,closed_loop_success_rate,closed_loop_wilson_lo,closed_loop_wilson_hi,closed_loop_median_rmse
+full,0.949118,0.9501,0.003,200,1,0.981154,1,0.0639302
+diag,3.63935,0.8209,0.0513,200,1,0.981154,1,0.0657133
+packet_only,9.22383,0.69305,0.0685,200,1,0.981154,1,0.0644211

@@ -27,6 +27,17 @@
 
 namespace gfs {
 
+// Covariance-ablation switch (review response, Phase 3): isolates the
+// contribution of modeling cross-view odometry correlation in closed form.
+// kFull is the paper's certificate (Theorem 3): the exact O(K) suffix-sum
+// treatment of correlated integrated-translation pose errors. kDiag drops
+// the cross-view correlation and treats each view's pose error as
+// independent (the naive covariance a non-gauge-aware estimator would use);
+// kPacketOnly drops the pose term entirely, certifying only packet noise as
+// if odometry were exact. Both ablations are expected to undercover under
+// correlated odometry -- that gap is the experiment.
+enum class VarianceModel { kFull = 0, kDiag = 1, kPacketOnly = 2 };
+
 struct RegistrationConfig {
     int max_packets = 64;      // window capacity
     double max_age = 4.0;      // [s] window horizon
@@ -35,6 +46,7 @@ struct RegistrationConfig {
     bool endpoint_only = false;  // ablation: use only the two window endpoints
                                  // (closed-form equivalent of the legacy
                                  // endpoint-gradient estimator)
+    VarianceModel variance_model = VarianceModel::kFull;
 };
 
 class WeightedWindowRegistration {
@@ -177,14 +189,36 @@ class WeightedWindowRegistration {
             }
             // O(K) evaluation of g^T Cov(e) g. A random-walk increment
             // between views m-1 and m appears in every later pose, so its
-            // sensitivity is the suffix sum of the per-pose sensitivities.
+            // sensitivity is the suffix sum of the per-pose sensitivities
+            // (kFull, Theorem 3). The ablations below are deliberately
+            // wrong models of the same pose-error term, kept for the
+            // covariance-ablation study (Phase 3 review response): kDiag
+            // treats each view's pose error as independent of the others
+            // (drops the shared-increment correlation the suffix sum
+            // captures); kPacketOnly drops the pose term altogether.
             double pose_var = 0.0;
-            Vec2 suffix{0, 0};
-            for (size_t m = use.size() - 1; m > 0; --m) {
-                suffix += pose_sensitivity[m];
-                const double dv = std::max(
-                    0.0, use[m]->pose_var - use[m - 1]->pose_var);
-                pose_var += dv * suffix.dot(suffix);
+            switch (cfg_.variance_model) {
+                case VarianceModel::kPacketOnly:
+                    break;
+                case VarianceModel::kDiag:
+                    for (size_t k = 0; k < use.size(); ++k) {
+                        const double dv =
+                            std::max(0.0, use[k]->pose_var - min_pv);
+                        pose_var +=
+                            dv * pose_sensitivity[k].dot(pose_sensitivity[k]);
+                    }
+                    break;
+                case VarianceModel::kFull:
+                default: {
+                    Vec2 suffix{0, 0};
+                    for (size_t m = use.size() - 1; m > 0; --m) {
+                        suffix += pose_sensitivity[m];
+                        const double dv = std::max(
+                            0.0, use[m]->pose_var - use[m - 1]->pose_var);
+                        pose_var += dv * suffix.dot(suffix);
+                    }
+                    break;
+                }
             }
             *var_theta =
                 (W > 1e-12) ? sensor_num / (W * W) + pose_var : 1e9;

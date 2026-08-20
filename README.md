@@ -33,7 +33,7 @@ intentionally not committed here — only the aggregated summaries and manifests
 needed to verify and reproduce the headline numbers. Raw data is available on
 request.
 
-**Provenance note.** The commit hashes below (`212a98b`, `0af4309`) identify
+**Provenance note.** The commit hashes below (`212a98b`, `20c493e`, `0af4309`) identify
 the source-tree state in the private development history where each
 campaign was run and provenance-locked; they are recorded verbatim in every
 manifest for verification but are not reachable in this public repo's own
@@ -57,9 +57,13 @@ see `ros2_ws/src/gps_free_seeking_gz/README.md`.
 
 All numbers below are from the citable offline campaign at commit
 [`212a98b`](results/campaign2027/offline/run_212a98b29759e3e4f21e29c33341a47c3da9c80c/CLEAN_RUN_SUMMARY.md)
-(200 paired randomized geometries per row) and the Gazebo physics-based
-validation campaign (90 independent launches, commit `0af4309`). Full detail,
-including calibration coverage statistics and every robustness sweep, is in
+(200 paired randomized geometries per row), the covariance-ablation and
+anchor-assumption-ablation campaign at commit
+[`20c493e`](results/campaign2027/offline/run_20c493e349176321969ef3143298ba5f4df1af36/)
+(independent Monte Carlo seed, same synthetic geometry), and the Gazebo
+physics-based validation campaign (90 independent launches, commit
+`0af4309`). Full detail, including calibration coverage statistics and every
+robustness sweep, is in
 [`CLEAN_RUN_SUMMARY.md`](results/campaign2027/offline/run_212a98b29759e3e4f21e29c33341a47c3da9c80c/CLEAN_RUN_SUMMARY.md).
 
 ### Estimator baselines (offline, 200 randomized geometries)
@@ -72,6 +76,7 @@ including calibration coverage statistics and every robustness sweep, is in
 | Sequential EKF | 200/200 | 0.0868 | [0.0797, 0.0950] | 14.17 | 0.28 |
 | Endpoint-only | 194/200 | 0.0708 | [0.0641, 0.0785] | 27.06 | 0.25 |
 | Fixed-decay excitation | 200/200 | 0.0625 | [0.0588, 0.0682] | 14.01 | 3.49 |
+| Anchor-assumption ablation | 67/200 | 35.2 | [7.4, 51.6] | 19.2 | 11.1 |
 | No excitation | 0/200 | 10.3256 | [9.7793, 11.0267] | -- | 3.62 |
 
 The proposed estimator tracks the known-yaw oracle to within ~2% median RMSE.
@@ -79,8 +84,34 @@ The paired median EKF-minus-proposed RMSE difference is +0.0193 m (95%
 bootstrap interval [+0.0146, +0.0274] m) — a real, non-strawman margin. The
 fixed-lag smoother is statistically indistinguishable from registration alone
 at ~50x the runtime cost; this is reported as a negative result, not omitted.
+The anchor-assumption ablation deliberately violates this paper's premise by
+pinning the relay-to-odometry yaw at zero once the global-anchor assumption
+of the two preceding studies is removed; it is not a fair competitor, only a
+demonstration of what breaks when that assumption silently fails.
 
 ![Nominal seeking trajectory](results/figures/fig_nominal.png)
+
+### Correlated-odometry certificate: covariance ablation
+
+Pooled over the ten-condition odometry grid (2,000 realizations/cell), three
+certificate variance models are compared: the proposed random-walk
+certificate that retains full cross-view correlation (`full`), a naive model
+that treats each view's pose error as independent (`diag`), and a model that
+drops the pose term entirely as if odometry were exact (`packet_only`).
+
+| Model | Empirical/predicted variance ratio | Realized 95% coverage | False certification |
+|---|---:|---:|---:|
+| full (proposed) | 0.95 | 95.0% | 0.3% |
+| diag (naive) | 3.64 | 82.1% | 5.1% |
+| packet-only (naive) | 9.22 | 69.3% | 6.9% |
+
+Only the full, correlated treatment stays calibrated at the nominal 95%
+level; both naive ablations systematically undercover. Closed-loop success
+stays 200/200 for all three models at the nominal condition — the wrong
+models are dishonest about their own confidence well before that dishonesty
+costs a mission.
+
+![Covariance ablation: pooled variance ratio and coverage](results/figures/fig_covariance_ablation.png)
 
 ### Robustness (offline)
 
@@ -135,6 +166,14 @@ mode telemetry pulled from the evaluator's ground-truth CSV:
 
 See `ros2_ws/src/gps_free_seeking_gz/README.md`'s Video capture section
 for how to run the capture and compositing scripts.
+
+### Operating envelope
+
+A single view combining per-condition certificate coverage, the odometry
+refusal boundary, paired estimator differences, and the Gazebo distributions
+above:
+
+![Operating envelope across offline and Gazebo campaigns](results/figures/fig_operating_envelope.png)
 
 ## Reproducing
 
