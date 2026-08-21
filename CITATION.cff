@@ -8,5 +8,8 @@ type: software
 authors:
   - given-names: Yash
     family-names: Bagla
+repository-code: "https://github.com/yashbagla321/gps-free-hidden-target-seeking"
+doi: 10.5281/zenodo.22046946
 license: MIT
+version: 1.0.0
 date-released: "2026-08-21"

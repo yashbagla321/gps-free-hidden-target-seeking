@@ -188,3 +188,7 @@ sha256sum -c checksums.sha256   # run inside a results/.../run_<hash>/ directory
 
 If you use this code or data, please cite the associated paper
 (citation to be added on acceptance/arXiv posting).
+
+To cite this software artifact specifically, use the version DOI from the
+Zenodo archive: [doi:10.5281/zenodo.22046946](https://doi.org/10.5281/zenodo.22046946)
+(see `CITATION.cff`).
